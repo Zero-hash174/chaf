@@ -1,0 +1,993 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تطبيق وصفتي</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = { darkMode: "class" };</script>
+    
+    <!-- Google Fonts: Cairo -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        /* Custom font for the application */
+        body {
+            font-family: 'Cairo', sans-serif;
+        }
+        /* Custom styles for better UX */
+        .prose ul { list-style-type: disc; padding-right: 1.5rem; }
+        .prose li { margin-bottom: 0.5rem; }
+        .prose strong { font-weight: 700; }
+        .hidden { display: none; }
+        .dynamic-tip-enter-active { transition: opacity 0.5s ease; }
+        .dynamic-tip-enter { opacity: 0; }
+        
+        /* CSS for the waving Sudanese flag */
+        .flag {
+            width: 30px;
+            height: 20px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+            border-radius: 2px;
+        }
+        
+        .flag-stripe { flex: 1; }
+        .flag-stripe.red { background-color: #d11c24; }
+        .flag-stripe.white { background-color: #ffffff; }
+        .flag-stripe.black { background-color: #000000; }
+
+        .flag-triangle {
+            width: 0;
+            height: 0;
+            border-style: solid;
+            border-width: 10px 0 10px 13px; /* Adjusted for better proportion */
+            border-color: transparent transparent transparent #00723a;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+    </style>
+<!-- PWA: Manifest & Meta -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="chaf.png">
+<link rel="apple-touch-icon" href="chaf.png">
+<meta name="application-name" content="تطبيق وصفتي">
+<meta name="apple-mobile-web-app-title" content="وصفتي">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#16a34a">
+</head>
+<body class="bg-white text-gray-800 dark:bg-gray-900 dark:text-gray-100 transition-colors duration-300">
+
+    <!-- Main container with background styles -->
+    <div class="bg-gradient-to-br from-green-50 to-teal-100 dark:bg-none min-h-screen p-4 sm:p-6 flex flex-col items-center">
+
+        <!-- Custom Notification -->
+        <div id="notification" class="hidden fixed top-5 left-1/2 -translate-x-1/2 bg-gray-800 text-white px-6 py-3 rounded-full shadow-lg z-50 transition-all duration-300 ease-in-out transform">
+            <span id="notification-message"></span>
+        </div>
+        
+        
+
+        <!-- Header -->
+        <header class="w-full max-w-4xl mb-8">
+            <div class="flex justify-between items-center">
+                <!-- Left side: Theme toggle -->
+                <button id="theme-toggle" class="p-2 rounded-full text-gray-800 dark:text-gray-100 bg-gray-200 dark:bg-gray-700 transition-colors duration-300">
+                    <i data-lucide="moon" class="w-6 h-6 theme-icon"></i>
+                </button>
+                
+                <!-- Center: Title -->
+                <div class="text-center">
+                    <h1 class="text-4xl sm:text-5xl font-extrabold text-green-700 drop-shadow-lg mb-1 dark:text-green-400">
+                        وصفتي
+                    </h1>
+                    <p class="text-lg sm:text-xl text-teal-600 dark:text-teal-400">مطبخك الذكي</p>
+                </div>
+
+                <!-- Right side: Flag -->
+                <div class="flag">
+                    <div class="flag-stripe red"></div>
+                    <div class="flag-stripe white"></div>
+                    <div class="flag-stripe black"></div>
+                    <div class="flag-triangle"></div>
+                </div>
+            </div>
+        </header>
+
+        <main class="w-full max-w-4xl grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Main Content Section -->
+            <section class="bg-white p-4 sm:p-6 rounded-2xl shadow-xl border border-green-200 col-span-1 md:col-span-2 dark:bg-gray-800 dark:border-green-700">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
+                    <div class="flex items-center">
+                        <h2 class="flex items-center text-2xl font-bold text-green-800 dark:text-green-300">
+                            <i data-lucide="chef-hat" class="w-7 h-7 ml-2 text-green-600 dark:text-green-400"></i>
+                            خطط وجباتك
+                        </h2>
+                        <div id="meal-plan-count" class="text-sm font-semibold text-green-600 dark:text-green-400 mr-2"></div>
+                    </div>
+                    <div class="flex flex-col items-start sm:items-end">
+                         <div id="api-usage-info" class="text-sm font-semibold text-green-700 dark:text-green-300"></div>
+                         <div id="reset-timer" class="hidden text-sm font-semibold text-red-500 dark:text-red-400"></div>
+                    </div>
+                </div>
+                
+                <!-- Controls and Inputs -->
+                <div>
+                    <!-- Cuisine Selection -->
+                    <div class="mb-4 p-4 bg-green-50 rounded-lg border border-green-200 dark:bg-gray-700 dark:border-green-600">
+                        <span class="font-semibold text-green-800 text-lg mb-3 block text-center sm:text-right dark:text-green-200">اختر المطبخ:</span>
+                        <div class="flex flex-wrap justify-center items-center gap-x-4 gap-y-2">
+                            <label class="inline-flex items-center cursor-pointer">
+                                <input type="radio" name="cuisine" value="sudanese" checked class="form-radio h-5 w-5 text-green-600 dark:text-green-400">
+                                <span class="mr-2 text-gray-700 dark:text-gray-300">سودانية</span>
+                            </label>
+                            <label class="inline-flex items-center cursor-pointer">
+                                <input type="radio" name="cuisine" value="egyptian" class="form-radio h-5 w-5 text-green-600 dark:text-green-400">
+                                <span class="mr-2 text-gray-700 dark:text-gray-300">مصرية</span>
+                            </label>
+                            <label class="inline-flex items-center cursor-pointer">
+                                <input type="radio" name="cuisine" value="turkish" class="form-radio h-5 w-5 text-green-600 dark:text-green-400">
+                                <span class="mr-2 text-gray-700 dark:text-gray-300">تركية</span>
+                            </label>
+                            <label class="inline-flex items-center cursor-pointer">
+                                <input type="radio" name="cuisine" value="arabic" class="form-radio h-5 w-5 text-green-600 dark:text-green-400">
+                                <span class="mr-2 text-gray-700 dark:text-gray-300">عربية</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Meal Type Selection -->
+                    <div class="mb-4 p-4 bg-green-50 rounded-lg border border-green-200 flex flex-col sm:flex-row items-center justify-center gap-4 dark:bg-gray-700 dark:border-green-600">
+                        <span class="font-semibold text-green-800 text-lg dark:text-green-200">اختر نوع الوجبة:</span>
+                        <select id="meal-type" class="w-full sm:w-auto p-2 pr-8 rounded-lg border border-green-300 focus:outline-none focus:ring-2 focus:ring-green-400 text-right bg-white dark:bg-gray-800 dark:text-gray-100 dark:border-green-600">
+                            <option value="وجبة">وجبة عادية</option>
+                            <option value="فطور">فطور</option>
+                            <option value="غداء">غداء</option>
+                            <option value="عشاء">عشاء</option>
+                            <option value="وجبة عائلية">وجبة عائلية</option>
+                            <option value="وجبة رومانسية">وجبة رومانسية</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Advanced Filters Section -->
+                    <div class="mb-4 p-4 bg-orange-50 rounded-lg border border-orange-200 dark:bg-gray-700 dark:border-orange-600">
+                        <h3 class="text-lg font-semibold text-orange-800 mb-3 text-center sm:text-right dark:text-orange-200">
+                            فلتر التفضيلات الغذائية:
+                        </h3>
+                        <div class="flex flex-wrap justify-center items-center gap-x-4 gap-y-2">
+                             <label class="inline-flex items-center cursor-pointer">
+                                <input type="checkbox" name="dietary-preference" value="vegetarian" class="form-checkbox h-5 w-5 text-orange-600 rounded dark:text-orange-400">
+                                <span class="mr-2 text-gray-700 dark:text-gray-300">نباتي</span>
+                            </label>
+                            <label class="inline-flex items-center cursor-pointer">
+                                <input type="checkbox" name="dietary-preference" value="vegan" class="form-checkbox h-5 w-5 text-orange-600 rounded dark:text-orange-400">
+                                <span class="mr-2 text-gray-700 dark:text-gray-300">فيجن</span>
+                            </label>
+                            <label class="inline-flex items-center cursor-pointer">
+                                <input type="checkbox" name="dietary-preference" value="gluten-free" class="form-checkbox h-5 w-5 text-orange-600 rounded dark:text-orange-400">
+                                <span class="mr-2 text-gray-700 dark:text-gray-300">خالي من الغلوتين</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- AI Meal Suggestion -->
+                    <div class="mt-6">
+                        <h3 class="text-xl font-semibold text-purple-700 mb-3 border-b pb-2 border-purple-200 dark:text-purple-400 dark:border-purple-600">
+                            ✨ اقتراح وجبة من مكوناتك
+                        </h3>
+                        <textarea id="user-ingredients" placeholder="أضف المكونات المتوفرة لديك (افصل بينها بفاصلة، مثال: طماطم، بصل، دجاج)" class="w-full p-3 mb-3 border border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400 resize-y text-right bg-white dark:bg-gray-700 dark:text-gray-100 dark:border-purple-600" rows="3"></textarea>
+                        
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                            <button id="image-search-btn" data-icon="camera" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg transition duration-300 ease-in-out transform hover:scale-105 shadow-md flex items-center justify-center">
+                                <span class="icon-container w-5 h-5 ml-2"><i data-lucide="camera" class="w-5 h-5"></i></span>
+                                <span class="button-text text-sm sm:text-base">بحث بالصورة</span>
+                            </button>
+                            <input type="file" id="image-upload" accept="image/*" class="hidden">
+                            
+                            <button id="suggest-from-ingredients-btn" data-icon="sparkles" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-300 ease-in-out transform hover:scale-105 shadow-md flex items-center justify-center">
+                                <span class="icon-container w-5 h-5 ml-2"><i data-lucide="sparkles" class="w-5 h-5"></i></span>
+                                <span class="button-text text-sm sm:text-base">اقتراح من مكوناتي</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- General AI Meal Suggestion -->
+                    <div class="mt-6">
+                         <h3 class="text-xl font-semibold text-indigo-700 mb-3 border-b pb-2 border-indigo-200 dark:text-indigo-400 dark:border-indigo-600">
+                            ✨ اقتراح وجبة عشوائية
+                        </h3>
+                        <button id="suggest-general-btn" data-icon="sparkles" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-300 ease-in-out transform hover:scale-105 shadow-md flex items-center justify-center mb-6">
+                            <span class="icon-container w-5 h-5 ml-2"><i data-lucide="sparkles" class="w-5 h-5"></i></span>
+                            <span class="button-text">اختر وجبة (بالذكاء الاصطناعي)</span>
+                        </button>
+                    </div>
+
+                    <!-- Display Suggested Meal -->
+                    <div id="suggested-meal-container" class="hidden bg-purple-50 p-4 rounded-lg shadow-md border border-purple-200 mb-6 dark:bg-gray-700 dark:border-purple-600"></div>
+
+                    <!-- Analyze Ingredients Button -->
+                    <button id="analyze-ingredients-btn" data-icon="sliders-horizontal" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-300 ease-in-out transform hover:scale-105 shadow-md flex items-center justify-center">
+                        <span class="icon-container w-5 h-5 ml-2"><i data-lucide="sliders-horizontal" class="w-5 h-5"></i></span>
+                        <span class="button-text">✨ تحليل المكونات (بالذكاء الاصطناعي)</span>
+                    </button>
+                </div>
+
+                <!-- Display Meal Plans -->
+                <div class="mt-8">
+                    <h3 class="text-xl font-semibold text-green-700 mb-3 border-b pb-2 border-green-200 dark:text-green-400 dark:border-green-600">
+                        وجباتك المخطط لها:
+                    </h3>
+                    <ul id="meal-plans-list" class="space-y-3">
+                        <p id="no-meals-message" class="text-gray-600 text-center py-4 dark:text-gray-400">لم تقم بإضافة أي وجبات بعد.</p>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Right Column: Grocery List & Nutrition Tips -->
+            <div class="flex flex-col gap-6">
+                <!-- Grocery List Section -->
+                <section class="bg-white p-4 sm:p-6 rounded-2xl shadow-xl border border-teal-200 dark:bg-gray-800 dark:border-teal-700">
+                    <h2 class="flex items-center text-2xl font-bold text-teal-800 mb-4 dark:text-teal-300">
+                        <i data-lucide="shopping-bag" class="w-7 h-7 ml-2 text-teal-600 dark:text-teal-400"></i>
+                        قائمة التسوق
+                    </h2>
+                    <div id="grocery-list" class="space-y-4">
+                         <p id="no-groceries-message" class="text-gray-600 text-center py-4 dark:text-gray-400">قائمة التسوق فارغة. أضف وجبات لتعبئتها!</p>
+                    </div>
+                    <button id="clear-grocery-btn" class="w-full mt-6 bg-teal-500 hover:bg-teal-600 text-white font-semibold py-3 px-6 rounded-lg transition duration-300 ease-in-out transform hover:scale-105 shadow-md">
+                        مسح قائمة التسوق
+                    </button>
+                </section>
+
+                <!-- Dynamic Nutrition Tips/Analysis Section -->
+                <section class="bg-white p-4 sm:p-6 rounded-2xl shadow-xl border border-orange-200 dark:bg-gray-800 dark:border-orange-700">
+                    <div id="nutrition-tips-header" class="relative">
+                         <h2 class="flex items-center text-2xl font-bold text-orange-800 mb-4 dark:text-orange-300">
+                            <i data-lucide="lightbulb" class="w-7 h-7 ml-2 text-orange-600 dark:text-orange-400"></i>
+                            نصائح غذائية
+                        </h2>
+                    </div>
+                    <div id="nutrition-tips-content" class="space-y-4"></div>
+                </section>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="w-full max-w-4xl text-center mt-8 text-gray-600 text-sm dark:text-gray-400">
+            <p>© <span id="year"></span> وصفتي. جميع الحقوق محفوظة.</p>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- API URL ---
+            const workerUrl = "https://workers-playground-autumn-pond-05c1.tito9py.workers.dev";
+
+            // --- LOCAL STORAGE & STATE MANAGEMENT ---
+            let mealPlans = [];
+            let suggestedMeal = null;
+            let isLoadingRecipe = false;
+            let isAnalyzingIngredients = false;
+            let isAnalyzingImage = false;
+            let currentTipIndex = 0;
+            let tipsInterval = null;
+            let dietaryPreferences = [];
+            let usageCount = 0;
+            let countdownInterval = null;
+            
+            // --- CONSTANTS ---
+            const MAX_MEAL_PLANS = 10;
+            const MAX_DAILY_REQUESTS = 10;
+            
+            // --- DOM ELEMENT REFERENCES ---
+            const loadingOverlay = document.getElementById('loading-overlay');
+            const userIngredientsInput = document.getElementById('user-ingredients');
+            const suggestFromIngredientsBtn = document.getElementById('suggest-from-ingredients-btn');
+            const suggestGeneralBtn = document.getElementById('suggest-general-btn');
+            const analyzeIngredientsBtn = document.getElementById('analyze-ingredients-btn');
+            const suggestedMealContainer = document.getElementById('suggested-meal-container');
+            const mealPlansList = document.getElementById('meal-plans-list');
+            const noMealsMessage = document.getElementById('no-meals-message');
+            const groceryList = document.getElementById('grocery-list');
+            const noGroceriesMessage = document.getElementById('no-groceries-message');
+            const clearGroceryBtn = document.getElementById('clear-grocery-btn');
+            const nutritionTipsHeader = document.getElementById('nutrition-tips-header');
+            const nutritionTipsContent = document.getElementById('nutrition-tips-content');
+            const mealTypeSelect = document.getElementById('meal-type');
+            const themeToggleBtn = document.getElementById('theme-toggle');
+            const htmlElement = document.documentElement;
+            const themeIconElement = themeToggleBtn.querySelector('.theme-icon');
+            const dietaryPreferenceCheckboxes = document.querySelectorAll('input[name="dietary-preference"]');
+            const mealPlanCountElement = document.getElementById('meal-plan-count');
+            const apiUsageInfoElement = document.getElementById('api-usage-info');
+            const imageUploadInput = document.getElementById('image-upload');
+            const imageSearchBtn = document.getElementById('image-search-btn');
+            const resetTimerElement = document.getElementById('reset-timer');
+
+            document.getElementById('year').textContent = new Date().getFullYear();
+
+            // --- INITIAL STATIC DATA ---
+            const staticNutritionTips = [
+                "اشرب كمية كافية من الماء يوميًا للحفاظ على ترطيب الجسم.",
+                "ركز على تناول الخضروات والفواكه الطازجة في كل وجبة.",
+                "استبدل الحبوب المكررة بالحبوب الكاملة مثل الأرز البني والخبز الأسمر.",
+                "قلل من تناول الأطعمة المصنعة والسكريات المضافة.",
+                "اختر مصادر البروتين الصحية مثل الدجاج، السمك، البقوليات، والبيض.",
+                "تناول وجبات صغيرة ومتعددة على مدار اليوم بدلاً من وجبات كبيرة قليلة.",
+                "استخدم الزيوت الصحية مثل زيت الزيتون وزيت عباد الشمس بكميات معتدلة.",
+                "تجنب الإفراط في تناول الملح والأطعمة عالية الصوديوم."
+            ];
+
+            // --- RENDER FUNCTIONS ---
+            
+            const renderMealPlans = () => {
+                mealPlansList.innerHTML = '';
+                mealPlanCountElement.textContent = `(${mealPlans.length} / ${MAX_MEAL_PLANS})`;
+                
+                if (mealPlans.length === 0) {
+                    mealPlansList.appendChild(noMealsMessage);
+                    noMealsMessage.classList.remove('hidden');
+                } else {
+                    noMealsMessage.classList.add('hidden');
+                    mealPlans.forEach(meal => {
+                        const li = document.createElement('li');
+                        li.className = "bg-green-50 p-4 rounded-lg shadow-sm flex flex-col items-start border border-green-100 dark:bg-gray-700 dark:border-green-600";
+                        li.innerHTML = `
+                            <div class="flex justify-between items-center w-full mb-2">
+                                <strong class="text-green-800 block text-lg dark:text-green-300">${meal.recipeName}</strong>
+                                <button data-id="${meal.id}" class="delete-meal-btn text-red-500 hover:text-red-700 transition duration-200" title="حذف الوجبة">
+                                    <i data-lucide="x-circle" class="w-6 h-6 pointer-events-none"></i>
+                                </button>
+                            </div>
+                            <span class="text-gray-700 text-sm mb-2 dark:text-gray-300">
+                                <span class="font-semibold">المكونات:</span> ${meal.ingredients.join('، ')}
+                            </span>
+                            <div class="flex items-start text-gray-700 text-sm mb-2 dark:text-gray-300">
+                                <i data-lucide="book-open" class="w-5 h-5 ml-2 mt-1 text-green-600 dark:text-green-400 flex-shrink-0"></i>
+                                <div><span class="font-semibold">طريقة التحضير:</span> ${meal.preparation}</div>
+                            </div>
+                            ${meal.youtubeSearchQuery ? `
+                            <a href="https://www.youtube.com/results?search_query=${encodeURIComponent(meal.youtubeSearchQuery)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center text-red-600 hover:text-red-800 transition duration-200 font-semibold text-sm mt-1" title="شاهد فيديو التحضير على يوتيوب">
+                                <i data-lucide="youtube" class="w-5 h-5 ml-2"></i>
+                                شاهد طريقة التحضير على يوتيوب
+                            </a>` : ''}
+                        `;
+                        mealPlansList.appendChild(li);
+                    });
+                }
+                renderGroceryList();
+                lucide.createIcons();
+            };
+
+            const renderGroceryList = () => {
+                groceryList.innerHTML = '';
+                if (mealPlans.length === 0) {
+                    groceryList.appendChild(noGroceriesMessage);
+                    noGroceriesMessage.classList.remove('hidden');
+                } else {
+                    noGroceriesMessage.classList.add('hidden');
+                    mealPlans.forEach((meal, index) => {
+                        const mealContainer = document.createElement('div');
+                        mealContainer.className = "bg-teal-50 p-4 rounded-lg border border-teal-100 dark:bg-gray-700 dark:border-teal-600";
+                        
+                        const mealTitle = document.createElement('h4');
+                        mealTitle.className = "text-lg font-semibold text-teal-800 mb-2 dark:text-teal-300";
+                        mealTitle.textContent = meal.recipeName;
+                        mealContainer.appendChild(mealTitle);
+
+                        const ingredientsList = document.createElement('ul');
+                        ingredientsList.className = "list-disc list-inside space-y-1 pr-4 text-gray-700 dark:text-gray-300";
+                        meal.ingredients.forEach(item => {
+                            const li = document.createElement('li');
+                            li.textContent = item;
+                            ingredientsList.appendChild(li);
+                        });
+                        mealContainer.appendChild(ingredientsList);
+                        groceryList.appendChild(mealContainer);
+
+                        if (index < mealPlans.length - 1) {
+                            const separator = document.createElement('div');
+                            separator.className = "my-4 border-t-2 border-teal-200 dark:border-teal-600";
+                            groceryList.appendChild(separator);
+                        }
+                    });
+                }
+            };
+            
+            const renderStaticTips = () => {
+                if (tipsInterval) clearInterval(tipsInterval);
+
+                nutritionTipsHeader.innerHTML = `
+                    <h2 class="flex items-center text-2xl font-bold text-orange-800 mb-4 dark:text-orange-300">
+                        <i data-lucide="lightbulb" class="w-7 h-7 ml-2 text-orange-600 dark:text-orange-400"></i>
+                        نصائح غذائية
+                    </h2>`;
+                
+                const displayTip = () => {
+                    const tip = staticNutritionTips[currentTipIndex];
+                    nutritionTipsContent.innerHTML = `
+                        <div class="bg-orange-50 p-4 rounded-lg shadow-sm flex items-start border border-orange-100 dynamic-tip-enter dark:bg-gray-700 dark:border-orange-600">
+                            <span class="w-3 h-3 bg-orange-500 rounded-full mt-1.5 ml-3 flex-shrink-0"></span>
+                            <p class="text-gray-700 dark:text-gray-300">${tip}</p>
+                        </div>
+                    `;
+                    setTimeout(() => {
+                        const newTipElement = nutritionTipsContent.querySelector('.dynamic-tip-enter');
+                        if (newTipElement) {
+                            newTipElement.classList.remove('dynamic-tip-enter');
+                            newTipElement.classList.add('dynamic-tip-enter-active');
+                        }
+                    }, 10);
+                    
+                    currentTipIndex = (currentTipIndex + 1) % staticNutritionTips.length;
+                };
+
+                displayTip();
+                tipsInterval = setInterval(displayTip, 5000);
+                lucide.createIcons();
+            };
+            
+            const renderDynamicTips = (analysisText) => {
+                if (tipsInterval) clearInterval(tipsInterval);
+
+                 nutritionTipsHeader.innerHTML = `
+                    <h2 class="flex items-center text-2xl font-bold text-blue-800 mb-4 dark:text-blue-300">
+                        <i data-lucide="sliders-horizontal" class="w-7 h-7 ml-2 text-blue-600 dark:text-blue-400"></i>
+                        تحليل المكونات
+                    </h2>
+                    <button id="clear-analysis-btn" class="absolute top-0 left-0 p-1 text-gray-500 hover:text-red-500 transition-colors duration-200 rounded-full" title="مسح التحليل">
+                        <i data-lucide="x" class="w-6 h-6"></i>
+                    </button>
+                    `;
+                const formattedText = analysisText.split('\n').map(line => {
+                    if (line.trim().startsWith('*')) {
+                        return `<li class="flex items-start"><span class="ml-2 text-blue-500">•</span>${line.substring(1).trim()}</li>`;
+                    }
+                    return `<p>${line.trim()}</p>`;
+                }).join('');
+                nutritionTipsContent.innerHTML = `<div class="prose max-w-none text-gray-700 dark:text-gray-300"><ul class="space-y-2">${formattedText}</ul></div>`;
+                lucide.createIcons();
+            };
+            
+            // --- HELPER FUNCTIONS ---
+            const showCustomNotification = (message) => {
+                const notification = document.getElementById('notification');
+                const notificationMessage = document.getElementById('notification-message');
+                
+                if (!notification || !notificationMessage) { return; }
+                
+                notificationMessage.textContent = message;
+                notification.classList.remove('hidden');
+                notification.classList.add('opacity-100', 'scale-100');
+                setTimeout(() => {
+                    notification.classList.remove('opacity-100', 'scale-100');
+                    notification.classList.add('hidden');
+                }, 3000);
+            };
+
+            const toggleLoading = (button, isLoading, originalText, iconName) => {
+                const iconContainer = button.querySelector('.icon-container');
+                const textSpan = button.querySelector('.button-text');
+                
+                if (!iconContainer || !textSpan) { return; }
+
+                if (isLoading) {
+                    button.disabled = true;
+                    iconContainer.innerHTML = `<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
+                    textSpan.textContent = 'جاري...';
+                } else {
+                    button.disabled = false;
+                    const icon = iconName || button.dataset.icon || 'sparkles';
+                    iconContainer.innerHTML = `<i data-lucide="${icon}" class="w-5 h-5"></i>`;
+                    lucide.createIcons();
+                    textSpan.textContent = originalText;
+                }
+            };
+            
+            const toggleDarkMode = () => {
+    if (htmlElement.classList.contains('dark')) {
+        htmlElement.classList.remove('dark');
+        localStorage.setItem('theme', 'light');
+        themeIconElement.setAttribute('data-lucide', 'moon'); // 🌙 في الوضع النهاري
+    } else {
+        htmlElement.classList.add('dark');
+        localStorage.setItem('theme', 'dark');
+        themeIconElement.setAttribute('data-lucide', 'sun'); // ☀️ في الوضع الليلي
+    }
+    lucide.createIcons();
+};
+            
+            const savedTheme = localStorage.getItem('theme');
+if (savedTheme === 'dark') {
+    htmlElement.classList.add('dark');
+    themeIconElement.setAttribute('data-lucide', 'sun'); // ☀️ للوضع الليلي
+} else {
+    htmlElement.classList.remove('dark');
+    themeIconElement.setAttribute('data-lucide', 'moon'); // 🌙 للوضع النهاري
+}
+lucide.createIcons();
+
+            // --- LOCAL STORAGE DATA MANAGEMENT ---
+            
+            const loadUserDataFromLocalStorage = () => {
+                try {
+                    const savedData = localStorage.getItem('userData');
+                    if (savedData) {
+                        const data = JSON.parse(savedData);
+                        mealPlans = data.mealPlans || [];
+                        dietaryPreferences = data.dietaryPreferences || [];
+                        
+                        renderMealPlans();
+                        dietaryPreferenceCheckboxes.forEach(checkbox => {
+                            checkbox.checked = dietaryPreferences.includes(checkbox.value);
+                        });
+                        showCustomNotification("تم تحميل بياناتك المحفوظة بنجاح!");
+                    }
+                } catch (e) {
+                    showCustomNotification("فشل تحميل بياناتك من التخزين المحلي.");
+                }
+            };
+
+            const saveUserDataToLocalStorage = () => {
+                try {
+                    const dataToSave = {
+                        mealPlans: mealPlans,
+                        dietaryPreferences: dietaryPreferences
+                    };
+                    localStorage.setItem('userData', JSON.stringify(dataToSave));
+                } catch (e) {
+                    showCustomNotification("فشل حفظ بياناتك. قد يكون التخزين ممتلئًا.");
+                }
+            };
+            
+            const getTodayDateString = () => {
+                const today = new Date();
+                return today.toISOString().split('T')[0];
+            };
+
+            const loadUsageDataFromLocalStorage = () => {
+                try {
+                    const savedUsage = localStorage.getItem('apiUsage');
+                    const today = getTodayDateString();
+                    if (savedUsage) {
+                        const data = JSON.parse(savedUsage);
+                        if (data.date === today) {
+                            usageCount = data.count || 0;
+                        } else {
+                            usageCount = 0;
+                            saveUsageDataToLocalStorage();
+                        }
+                    } else {
+                        usageCount = 0;
+                        saveUsageDataToLocalStorage();
+                    }
+                    renderUsageCount();
+                } catch (e) {
+                    console.error("Error loading usage data from Local Storage:", e);
+                }
+            };
+
+            const saveUsageDataToLocalStorage = () => {
+                try {
+                    const usageData = {
+                        count: usageCount,
+                        date: getTodayDateString()
+                    };
+                    localStorage.setItem('apiUsage', JSON.stringify(usageData));
+                } catch (e) {
+                    console.error("Error saving usage data to Local Storage:", e);
+                }
+            };
+
+            const checkAndIncrementUsage = () => {
+                if (usageCount >= MAX_DAILY_REQUESTS) {
+                    showCustomNotification(`لقد وصلت إلى الحد الأقصى للطلبات اليومية (${MAX_DAILY_REQUESTS} طلبات).`);
+                    renderUsageCount();
+                    return false;
+                }
+                usageCount++;
+                saveUsageDataToLocalStorage();
+                renderUsageCount();
+                return true;
+            };
+
+            const startCountdown = () => {
+                if (countdownInterval) clearInterval(countdownInterval);
+
+                const getResetTime = () => {
+                    const now = new Date();
+                    const resetTime = new Date(now);
+                    resetTime.setDate(now.getDate() + 1);
+                    resetTime.setHours(0, 0, 0, 0);
+                    return resetTime;
+                };
+
+                const updateTimer = () => {
+                    const distance = getResetTime() - new Date().getTime();
+
+                    if (distance < 0) {
+                        clearInterval(countdownInterval);
+                        resetTimerElement.classList.add('hidden');
+                        apiUsageInfoElement.classList.remove('hidden');
+                        loadUsageDataFromLocalStorage();
+                        return;
+                    }
+
+                    const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                    resetTimerElement.textContent = `محاولات جديدة بعد: ${hours}س ${minutes}د ${seconds}ث`;
+                };
+
+                updateTimer();
+                countdownInterval = setInterval(updateTimer, 1000);
+            };
+
+            const renderUsageCount = () => {
+                if (usageCount >= MAX_DAILY_REQUESTS) {
+                    apiUsageInfoElement.classList.add('hidden');
+                    resetTimerElement.classList.remove('hidden');
+                    startCountdown();
+                } else {
+                    if (countdownInterval) clearInterval(countdownInterval);
+                    apiUsageInfoElement.classList.remove('hidden');
+                    resetTimerElement.classList.add('hidden');
+                    const remaining = MAX_DAILY_REQUESTS - usageCount;
+                    apiUsageInfoElement.textContent = `الطلبات المتبقية: ${remaining}`;
+                }
+            };
+
+            // --- CORE LOGIC FUNCTIONS ---
+            
+            const addSuggestedMealToPlan = () => {
+                if (suggestedMeal) {
+                    if (mealPlans.length >= MAX_MEAL_PLANS) {
+                        showCustomNotification(`لا يمكن إضافة المزيد من الوجبات. الحد الأقصى هو ${MAX_MEAL_PLANS}.`);
+                        return;
+                    }
+
+                    mealPlans.push({ id: Date.now(), ...suggestedMeal });
+                    renderMealPlans();
+                    saveUserDataToLocalStorage();
+                    showCustomNotification("تم إضافة الوجبة المقترحة بنجاح!");
+                    suggestedMeal = null;
+                    suggestedMealContainer.innerHTML = '';
+                    suggestedMealContainer.classList.add('hidden');
+                    userIngredientsInput.value = '';
+                }
+            };
+
+            const clearSuggestedMeal = () => {
+                suggestedMeal = null;
+                suggestedMealContainer.innerHTML = '';
+                suggestedMealContainer.classList.add('hidden');
+                userIngredientsInput.value = '';
+                showCustomNotification("تم مسح الاقتراح.");
+            };
+            
+            const deleteMealPlan = (id) => {
+                mealPlans = mealPlans.filter(meal => meal.id !== id);
+                renderMealPlans();
+                saveUserDataToLocalStorage();
+                showCustomNotification("تم حذف الوجبة.");
+            };
+            
+            // --- API CALLS (GEMINI via Cloudflare Worker) ---
+            const callGeminiAPI = async (payload) => {
+                try {
+                    const response = await fetch(workerUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return await response.json();
+                } catch (error) {
+                    showCustomNotification("حدث خطأ في الاتصال بالذكاء الاصطناعي.");
+                    return null;
+                }
+            };
+
+            const generateRecipe = async (isGeneral) => {
+                if (isLoadingRecipe || isAnalyzingIngredients || isAnalyzingImage) return;
+
+                const ingredients = userIngredientsInput.value.trim();
+                if (!isGeneral && !ingredients) {
+                    showCustomNotification("الرجاء إدخال المكونات المتوفرة لديك أولاً.");
+                    return;
+                }
+                
+                if (!checkAndIncrementUsage()) return;
+
+                isLoadingRecipe = true;
+                const button = isGeneral ? suggestGeneralBtn : suggestFromIngredientsBtn;
+                const originalText = button.querySelector('.button-text').textContent;
+                toggleLoading(button, true, originalText);
+                
+                renderStaticTips();
+                suggestedMealContainer.classList.add('hidden');
+                suggestedMeal = null;
+
+                const selectedCuisine = document.querySelector('input[name="cuisine"]:checked').value;
+                const selectedMealType = mealTypeSelect.value;
+                
+                let cuisineText;
+                switch (selectedCuisine) {
+                    case 'sudanese': cuisineText = 'سودانية'; break;
+                    case 'egyptian': cuisineText = 'مصرية'; break;
+                    case 'turkish': cuisineText = 'تركية'; break;
+                    case 'arabic': cuisineText = 'عربية'; break;
+                    default: cuisineText = 'عربية'; break;
+                }
+                
+                const preferencesText = dietaryPreferences.length > 0
+                    ? `، مع مراعاة التفضيلات الغذائية التالية: ${dietaryPreferences.map(p => {
+                        switch(p) {
+                            case 'vegetarian': return 'نباتي';
+                            case 'vegan': return 'فيجن';
+                            case 'gluten-free': return 'خالي من الغلوتين';
+                            default: return '';
+                        }
+                    }).filter(Boolean).join(' و ')}`
+                    : '';
+                
+                const prompt = isGeneral 
+                    ? `اقترح وصفة جديدة ومختلفة من نوع ${selectedMealType} من المطبخ ${cuisineText}${preferencesText}. تجنب تكرار الاقتراحات السابقة. قدم اسم الوصفة، قائمة المكونات، وطريقة التحضير، وعبارة بحث لـ YouTube.`
+                    : `باستخدام المكونات التالية: "${ingredients}". اقترح وصفة إبداعية من نوع ${selectedMealType} من المطبخ ${cuisineText}${preferencesText}. قدم اسم الوصفة، قائمة المكونات، طريقة التحضير، وعبارة بحث لـ YouTube.`;
+
+                const payload = {
+                    contents: [{ role: "user", parts: [{ text: prompt }] }],
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                        responseSchema: {
+                            type: "OBJECT",
+                            properties: {
+                                "recipeName": { "type": "STRING" },
+                                "ingredients": { "type": "ARRAY", "items": { "type": "STRING" } },
+                                "preparation": { "type": "STRING" },
+                                "youtubeSearchQuery": { "type": "STRING" }
+                            },
+                            "propertyOrdering": ["recipeName", "ingredients", "preparation", "youtubeSearchQuery"]
+                        }
+                    }
+                };
+
+                const result = await callGeminiAPI(payload);
+
+                if (result?.candidates?.[0]?.content?.parts?.[0]?.text) {
+                    try {
+                        suggestedMeal = JSON.parse(result.candidates[0].content.parts[0].text);
+                        suggestedMealContainer.innerHTML = `
+                            <h4 class="text-xl font-semibold text-purple-800 mb-2 dark:text-purple-300">${suggestedMeal.recipeName}</h4>
+                            <p class="text-gray-700 text-sm mb-2 dark:text-gray-300"><span class="font-semibold">المكونات:</span> ${suggestedMeal.ingredients.join('، ')}</p>
+                            <p class="text-gray-700 text-sm mb-2 dark:text-gray-300"><span class="font-semibold">طريقة التحضير:</span> ${suggestedMeal.preparation}</p>
+                            ${suggestedMeal.youtubeSearchQuery ? `<a href="https://www.youtube.com/results?search_query=${encodeURIComponent(suggestedMeal.youtubeSearchQuery)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center text-red-600 hover:text-red-800 transition duration-200 font-semibold text-sm mt-1 dark:text-red-400" title="شاهد فيديو التحضير على يوتيوب">
+                                <i data-lucide="youtube" class="w-5 h-5 ml-2"></i> شاهد طريقة التحضير على يوتيوب</a>` : ''}
+                            <div class="flex flex-col sm:flex-row gap-2 mt-4">
+                                <button id="add-suggested-btn" class="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300 ease-in-out transform hover:scale-105 shadow-md flex items-center justify-center">
+                                    <i data-lucide="plus-circle" class="w-5 h-5 ml-2"></i> إضافة للخطط
+                                </button>
+                                <button id="clear-suggested-btn" class="w-full sm:w-auto bg-gray-400 hover:bg-gray-500 text-white font-semibold py-2 px-4 rounded-lg transition duration-300 ease-in-out transform hover:scale-105 shadow-md flex items-center justify-center">
+                                    <i data-lucide="x-circle" class="w-5 h-5"></i>
+                                </button>
+                            </div>
+                        `;
+                        suggestedMealContainer.classList.remove('hidden');
+                        lucide.createIcons();
+                        showCustomNotification("تم اقتراح وجبة جديدة!");
+                    } catch (e) {
+                         showCustomNotification("حدث خطأ في تحليل استجابة الخادم.");
+                    }
+                } else {
+                    showCustomNotification("لم يتمكن النظام من اقتراح وجبة حاليًا.");
+                }
+
+                isLoadingRecipe = false;
+                toggleLoading(button, false, originalText);
+            };
+
+            const analyzeIngredients = async () => {
+                if (isLoadingRecipe || isAnalyzingIngredients || isAnalyzingImage) return;
+
+                const ingredients = suggestedMeal
+                    ? suggestedMeal.ingredients.join(', ')
+                    : userIngredientsInput.value.trim();
+                
+                if (!ingredients) {
+                    showCustomNotification("الرجاء إدخال بعض المكونات أو اقتراح وجبة لتحليلها.");
+                    return;
+                }
+
+                if (!checkAndIncrementUsage()) return;
+
+                isAnalyzingIngredients = true;
+                const button = analyzeIngredientsBtn;
+                const originalText = button.querySelector('.button-text').textContent;
+                toggleLoading(button, true, originalText);
+                
+                const preferencesText = dietaryPreferences.length > 0
+                    ? `، مع الأخذ في الاعتبار التفضيلات الغذائية التالية: ${dietaryPreferences.map(p => {
+                        switch(p) {
+                            case 'vegetarian': return 'نباتي';
+                            case 'vegan': return 'فيجن';
+                            case 'gluten-free': return 'خالي من الغلوتين';
+                            default: return '';
+                        }
+                    }).filter(Boolean).join(' و ')}`
+                    : '';
+
+                const prompt = `بناءً على المكونات التالية: "${ingredients}"${preferencesText}، قم بتقديم تحليل مختصر ومفيد. ركز على القيمة الغذائية الرئيسية واقترح بدائل بسيطة أو إضافات لتعزيز الفائدة. يجب أن تكون الإجابة على شكل نقاط (bullet points) فقط، لا تزيد عن 5 نقاط.`;
+                const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
+                
+                const result = await callGeminiAPI(payload);
+
+                if (result?.candidates?.[0]?.content?.parts?.[0]?.text) {
+                    const analysisText = result.candidates[0].content.parts[0].text;
+                    renderDynamicTips(analysisText);
+                    showCustomNotification("تم تحليل المكونات بنجاح!");
+                } else {
+                    renderStaticTips();
+                    showCustomNotification("لم يتمكن النظام من تحليل المكونات حاليًا.");
+                }
+                
+                isAnalyzingIngredients = false;
+                toggleLoading(button, false, originalText);
+            };
+
+            const analyzeImageIngredients = async (base64ImageData, mimeType) => {
+                if (isLoadingRecipe || isAnalyzingIngredients || isAnalyzingImage) return;
+                
+                if (!checkAndIncrementUsage()) return;
+
+                isAnalyzingImage = true;
+                const button = imageSearchBtn;
+                const originalText = button.querySelector('.button-text').textContent;
+                toggleLoading(button, true, originalText, 'camera');
+
+                const preferencesText = dietaryPreferences.length > 0
+                    ? `، مع الأخذ في الاعتبار التفضيلات الغذائية التالية: ${dietaryPreferences.map(p => {
+                        switch(p) {
+                            case 'vegetarian': return 'نباتي';
+                            case 'vegan': return 'فيجن';
+                            case 'gluten-free': return 'خالي من الغلوتين';
+                            default: return '';
+                        }
+                    }).filter(Boolean).join(' و ')}`
+                    : '';
+
+                const prompt = `ما هي المكونات الصالحة للطبخ التي تراها في هذه الصورة؟ اذكر فقط المكونات، وافصل بينها بفاصلة${preferencesText}.`;
+                
+                const payload = {
+                    contents: [
+                        {
+                            role: "user",
+                            parts: [
+                                { text: prompt },
+                                {
+                                    inlineData: {
+                                        mimeType: mimeType,
+                                        data: base64ImageData
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                };
+
+                const result = await callGeminiAPI(payload);
+
+                if (result?.candidates?.[0]?.content?.parts?.[0]?.text) {
+                    const ingredientsList = result.candidates[0].content.parts[0].text.trim();
+                    userIngredientsInput.value = ingredientsList;
+                    showCustomNotification("تم التعرف على المكونات بنجاح!");
+                } else {
+                    showCustomNotification("لم يتمكن النظام من التعرف على أي مكونات في الصورة.");
+                }
+
+                isAnalyzingImage = false;
+                toggleLoading(button, false, originalText, 'camera');
+            };
+            
+            // --- EVENT LISTENERS ---
+            suggestFromIngredientsBtn.addEventListener('click', () => generateRecipe(false));
+            suggestGeneralBtn.addEventListener('click', () => generateRecipe(true));
+            analyzeIngredientsBtn.addEventListener('click', analyzeIngredients);
+            themeToggleBtn.addEventListener('click', toggleDarkMode);
+            
+            clearGroceryBtn.addEventListener('click', () => {
+                mealPlans = [];
+                renderMealPlans();
+                saveUserDataToLocalStorage();
+                showCustomNotification("تم مسح قائمة التسوق والوجبات المخططة.");
+            });
+
+            dietaryPreferenceCheckboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', () => {
+                    dietaryPreferences = Array.from(dietaryPreferenceCheckboxes)
+                                                .filter(cb => cb.checked)
+                                                .map(cb => cb.value);
+                    saveUserDataToLocalStorage();
+                });
+            });
+
+            document.body.addEventListener('click', (e) => {
+                if (e.target.id === 'add-suggested-btn' || e.target.closest('#add-suggested-btn')) {
+                    addSuggestedMealToPlan();
+                }
+                if (e.target.id === 'clear-suggested-btn' || e.target.closest('#clear-suggested-btn')) {
+                    clearSuggestedMeal();
+                }
+                if (e.target.classList.contains('delete-meal-btn') || e.target.closest('.delete-meal-btn')) {
+                    const button = e.target.closest('.delete-meal-btn');
+                    const mealId = parseInt(button.dataset.id, 10);
+                    deleteMealPlan(mealId);
+                }
+                if (e.target.id === 'clear-analysis-btn' || e.target.closest('#clear-analysis-btn')) {
+                    renderStaticTips();
+                    showCustomNotification("تم مسح التحليل.");
+                }
+            });
+
+            imageSearchBtn.addEventListener('click', () => {
+                imageUploadInput.click();
+            });
+
+            imageUploadInput.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    if (!file.type.startsWith('image/')) {
+                         showCustomNotification('الرجاء اختيار ملف صورة صالح.');
+                         return;
+                    }
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        const base64Data = reader.result.split(',')[1];
+                        analyzeImageIngredients(base64Data, file.type);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+
+            // --- INITIALIZATION ---
+            const initializeApp = () => {
+                loadUserDataFromLocalStorage();
+                loadUsageDataFromLocalStorage();
+                renderStaticTips();
+                renderMealPlans();
+                lucide.createIcons();
+                setTimeout(() => {
+                    loadingOverlay.classList.add('hidden');
+                }, 250);
+            };
+
+            initializeApp();
+        });
+    </script>
+<!-- PWA: Service Worker Registration -->
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('./sw.js')
+      .then(function(reg) { /* console.log('SW registered', reg); */ })
+      .catch(function(err) { console.warn('SW registration failed', err); });
+  });
+}
+</script>
+</body>
+</html>
+
